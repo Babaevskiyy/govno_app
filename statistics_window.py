@@ -3,8 +3,6 @@ from tkinter import ttk
 import datetime
 from collections import Counter
 
-
-
 def create_statistics_window(db):
     statistics_window = tk.Toplevel()
     statistics_window.title("Статистика")

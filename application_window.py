@@ -1,21 +1,21 @@
 import tkinter as tk
+from tkinter import ttk
 import datetime
 from ticket_form import TicketForm
 from ticket_edit_form import TicketEditForm
 import statistics_window
-from tkinter import ttk
 
 class ApplicationWindow:
-    def __init__(self, master, db, current_user, root, *args, **kwargs):
+    def __init__(self, master, db, current_user, *args, **kwargs):
         self.master = master
-        self.root = root  
         self.db = db
         self.current_user = current_user
 
         self.master.title("Главное окно приложения")
         self.master.configure(bg="#2C2F33")  
 
-        self.main_frame = tk.Frame(master, bg="#2C2F33")
+        # Создание основного фрейма
+        self.main_frame = tk.Frame(self.master, bg="#2C2F33")
         self.main_frame.pack(fill=tk.BOTH, expand=True)
 
         self.label_style = ttk.Style()
@@ -24,17 +24,22 @@ class ApplicationWindow:
         self.button_style = ttk.Style()
         self.button_style.configure("Dark.TButton", foreground="#000000", background="#2C2F33", relief=tk.FLAT, padx=10, pady=5, font="Tablón")
 
-        self.btn_logout = ttk.Button(self.main_frame, text="Выйти", style="Dark.TButton", command=self.logout)
-        self.btn_logout.pack()
+        # Создание фрейма для кнопок
+        self.button_frame = tk.Frame(self.main_frame, bg="#2C2F33")
+        self.button_frame.pack(side=tk.TOP, fill=tk.X)
 
-        self.btn_statistics = ttk.Button(self.main_frame, text="Статистика", command=self.open_statistics_window, style="Dark.TButton")
-        self.btn_statistics.pack()
+        # Создание кнопок
+        self.btn_create_ticket = ttk.Button(self.button_frame, text="Создать заявку", command=self.create_ticket, style="Dark.TButton")
+        self.btn_create_ticket.pack(side=tk.LEFT, padx=10, pady=10)
 
-        self.btn_create_ticket = ttk.Button(self.main_frame, text="Создать заявку", command=self.create_ticket, style="Dark.TButton")
-        self.btn_create_ticket.pack()
+        self.btn_statistics = ttk.Button(self.button_frame, text="Статистика", command=self.open_statistics_window, style="Dark.TButton")
+        self.btn_statistics.pack(side=tk.LEFT, padx=10, pady=10)
 
-        self.search_frame = tk.Frame(self.main_frame, bg="#2C2F33") 
-        self.search_frame.pack()
+        self.btn_logout = ttk.Button(self.button_frame, text="Выйти", style="Dark.TButton", command=self.logout)
+        self.btn_logout.pack(side=tk.LEFT, padx=10, pady=10)
+
+        self.search_frame = tk.Frame(self.button_frame, bg="#2C2F33") 
+        self.search_frame.pack(side=tk.LEFT, padx=10, pady=10)
 
         self.search_label = ttk.Label(self.search_frame, text="Поиск:", style="Dark.TLabel")
         self.search_label.pack(side=tk.LEFT)
@@ -45,23 +50,31 @@ class ApplicationWindow:
         self.search_button = ttk.Button(self.search_frame, text="Найти", command=self.search_tickets, style="Dark.TButton")
         self.search_button.pack(side=tk.LEFT)
 
-        self.ticket_canvas = tk.Canvas(self.main_frame, bg="#2C2F33")
-        self.ticket_canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        # Создание Canvas для заявок
+        self.canvas = tk.Canvas(self.main_frame, bg="#2C2F33", highlightthickness=0)
+        self.canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
 
-        self.inner_frame = tk.Frame(self.ticket_canvas, bg="#2C2F33")
-        self.inner_frame.pack(fill=tk.BOTH, expand=True)
+        # Внутренний фрейм для размещения заявок
+        self.inner_frame = tk.Frame(self.canvas, bg="#2C2F33")
+        self.canvas.create_window((0, 0), window=self.inner_frame, anchor=tk.NW)
 
-        self.scrollbar = ttk.Scrollbar(self.main_frame, orient=tk.VERTICAL, command=self.ticket_canvas.yview)
+        # Добавление скроллбара для прокрутки содержимого Canvas
+        self.scrollbar = ttk.Scrollbar(self.master, orient=tk.VERTICAL, command=self.canvas.yview)
         self.scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        self.canvas.configure(yscrollcommand=self.scrollbar.set)
 
-        self.ticket_canvas.configure(yscrollcommand=self.scrollbar.set)
-        self.ticket_canvas.create_window((0, 0), window=self.inner_frame, anchor=tk.NW)
-        self.inner_frame.bind("<Configure>", self.on_frame_configure)
+        # Привязка событий прокрутки мышью
+        self.canvas.bind("<Configure>", self.on_canvas_configure)
+        self.inner_frame.bind("<Configure>", self.on_inner_frame_configure)
 
-        self.update_ticket_info()
+        # Добавление элементов интерфейса
+        self.update_ticket_info()  
 
-    def on_frame_configure(self, event):
-        self.ticket_canvas.configure(scrollregion=self.ticket_canvas.bbox("all"))
+    def on_canvas_configure(self, event):
+        self.canvas.configure(scrollregion=self.canvas.bbox("all"))
+
+    def on_inner_frame_configure(self, event):
+        self.canvas.configure(scrollregion=self.canvas.bbox("all"))
 
     def create_ticket(self):
         current_datetime = datetime.datetime.now()  
@@ -92,11 +105,13 @@ class ApplicationWindow:
             self.update_ticket_info()
 
     def display_search_results(self, tickets):
+        # Удаление всех виджетов из inner_frame
         for widget in self.inner_frame.winfo_children():
             widget.destroy()
 
+        # Создание и размещение виджетов для отображения результатов поиска
         for ticket in tickets:
-            ticket_info = f"Заявка #: {ticket[1]}\nОборудование: {ticket[2]}\nТип неисправности: {ticket[3]}\nОптисание неисправности: {ticket[4]}\nКлиент: {ticket[5]}\nСтатус: {ticket[6]}\nДата и время создания: {ticket[7]}"
+            ticket_info = f"Заявка #: {ticket[1]}\nОборудование: {ticket[2]}\nТип неисправности: {ticket[3]}\nОписание неисправности: {ticket[4]}\nКлиент: {ticket[5]}\nСтатус: {ticket[6]}\nДата и время создания: {ticket[7]}"
             if ticket[8]:  
                 ticket_info += f"\nДата и время выполнения: {ticket[8]}"
             label = tk.Label(self.inner_frame, text=ticket_info, bg="#2C2F33", fg="#FFFFFF", font="Tablón")
@@ -108,34 +123,28 @@ class ApplicationWindow:
             delete_button = tk.Button(self.inner_frame, text="Удалить", command=lambda t=ticket[0]: self.delete_ticket(t), bg="#2C2F33", fg="#FFFFFF")
             delete_button.pack()
 
-        if tickets:
-            self.label_ticket_info.config(text="Заявки")
-        else:
-            self.label_ticket_info.config(text="Нет созданных заявок")
-
     def update_ticket_info(self):
+        # Удаление всех виджетов из inner_frame
         for widget in self.inner_frame.winfo_children():
             widget.destroy()
 
+        # Получение информации о всех заявках из БД
         tickets = self.db.get_all_tickets()
+
+        # Создание и размещение виджетов для отображения информации о заявках
         for ticket in tickets:
-            ticket_info = f"Заявка #: {ticket[1]}\nОборудование: {ticket[2]}\nОписание проблемы: {ticket[3]}\nОписание проблемы: {ticket[4]}\nКлиент: {ticket[5]}\nСтатус: {ticket[6]}\nДата и время создания: {ticket[7]}"
+            ticket_info = f"Заявка #: {ticket[1]}\nОборудование: {ticket[2]}\nТип неисправности: {ticket[3]}\nОписание неисправности: {ticket[4]}\nКлиент: {ticket[5]}\nСтатус: {ticket[6]}\nДата и время создания: {ticket[7]}"
             if ticket[8]:  
                 ticket_info += f"\nДата и время выполнения: {ticket[8]}"
             label = tk.Label(self.inner_frame, text=ticket_info, bg="#2C2F33", fg="#FFFFFF", font="Tablón")
             label.pack()
 
-            edit_button = tk.Button(self.inner_frame, text="Редактровать", command=lambda t=ticket[0]: self.edit_ticket(t), bg="#2C2F33", fg="#FFFFFF")
+            edit_button = tk.Button(self.inner_frame, text="Редактировать", command=lambda t=ticket[0]: self.edit_ticket(t), bg="#2C2F33", fg="#FFFFFF")
             edit_button.pack()
 
             delete_button = tk.Button(self.inner_frame, text="Удалить", command=lambda t=ticket[0]: self.delete_ticket(t), bg="#2C2F33", fg="#FFFFFF")
             delete_button.pack()
 
-        if tickets:
-            self.label_ticket_info.config(text="Результаты поиска")
-        else:
-            self.label_ticket_info.config(text="Заявки не найдены")
-
     def logout(self):
         self.master.destroy()
-        self.root.deiconify() 
+        self.root.deiconify()
